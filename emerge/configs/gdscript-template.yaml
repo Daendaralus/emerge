@@ -5,11 +5,16 @@ analyses:
 - analysis_name: gd check
   source_directory: /Users/user1/emerge/project/source
   only_permit_languages:
-  - gdscript
+  - gd
   only_permit_file_extensions:
   - .gd
   ignore_directories_containing:
   - __pycache__
+  - .godot
+  - .git
+  - addons
+  - .vscode
+  - .github
   file_scan:
   - number_of_methods
   - source_lines_of_code

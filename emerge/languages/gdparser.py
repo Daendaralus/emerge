@@ -42,6 +42,9 @@ class GDParsingKeyword(Enum):
     FUNC = "func"
     ENUM = "enum"
     VAR = "var"
+    CONST = "const"
+    LOAD = "load"
+    PRELOAD = "preload"
 
 
 class GDParser(AbstractParser, ParsingMixin):
@@ -86,8 +89,9 @@ class GDParser(AbstractParser, ParsingMixin):
         scanned_tokens = self.preprocess_file_content_and_generate_token_list_by_mapping(file_content, self._token_mappings)
 
         # make sure to create unique names by using the relative analysis path as a base for the result
-        parent_analysis_source_path = f"{Path(analysis.source_directory).parent}/"
-        relative_file_path_to_analysis = str(Path(full_file_path).relative_to(parent_analysis_source_path))
+        # parent_analysis_source_path = f"{Path(analysis.source_directory).parent}/"
+        # full_file_path = Path(parent_analysis_source_path) / Path(full_file_path)
+        relative_file_path_to_analysis = full_file_path #str(Path(full_file_path).relative_to(parent_analysis_source_path))
 
         file_result = FileResult.create_file_result(
             analysis=analysis,
@@ -102,35 +106,37 @@ class GDParser(AbstractParser, ParsingMixin):
             source=file_content,
             preprocessed_source=""
         )
-        self._add_class_name_and_extends_to_result(file_result)
+        self._add_class_name_to_result(file_result)
+        self._add_loads_to_result(file_result)
         self._results[file_result.unique_name] = file_result
 
     def after_generated_file_results(self, analysis) -> None:
         # curate dependencies from the first scan java module format that actually exists, to match the real dependencies
-        filtered_results = {k: v for (k, v) in self.results.items() if v.analysis is analysis and isinstance(v, FileResult)}
+        # filtered_results = {k: v for (k, v) in self.results.items() if v.analysis is analysis and isinstance(v, FileResult)}
 
-        result: FileResult
-        for _, result in filtered_results.items():
-            curated_dependencies = []
+        # result: FileResult
+        # for _, result in filtered_results.items():
+        #     curated_dependencies = []
 
-            for dependency in result.scanned_import_dependencies:
-                curated = False
-                needle = str(Path("/"+dependency.replace(".", "/") + ".gd"))
+        #     for dependency in result.scanned_import_dependencies:
+        #         curated = False
+        #         needle = str(Path("/"+dependency.replace(".", "/") + ".gd"))
 
-                for haystack, v in filtered_results.items():
-                    if needle in haystack:
-                        curated = True
-                        curated_dependencies.append(haystack)
-                        break
-                if not curated:
-                    curated_dependencies.append(dependency)
+        #         for haystack, v in filtered_results.items():
+        #             if needle in haystack:
+        #                 curated = True
+        #                 curated_dependencies.append(haystack)
+        #                 break
+        #         if not curated:
+        #             curated_dependencies.append(dependency)
 
-            result.scanned_import_dependencies = curated_dependencies
+        #     result.scanned_import_dependencies = curated_dependencies
+        pass
 
-    def _add_class_name_and_extends_to_result(self, result: FileResult):
+    def _add_class_name_to_result(self, result: FileResult):
         # Define parsing rules
         class_name_expr = pp.Keyword(GDParsingKeyword.PACKAGE.value) + pp.Word(pp.alphanums).setResultsName("class_name")
-        extends_expr = pp.Keyword(GDParsingKeyword.EXTENDS.value) + pp.Word(pp.alphanums).setResultsName("extends_name")
+        # extends_expr = pp.Keyword(GDParsingKeyword.EXTENDS.value) + pp.Word(pp.alphanums).setResultsName("extends_name")
 
         # Scan lines for class_name and extends
         list_of_words = result.scanned_tokens
@@ -141,18 +147,39 @@ class GDParser(AbstractParser, ParsingMixin):
                     class_name_result = class_name_expr.parseString(read_ahead_string)
                     result.module_name = class_name_result["class_name"]
                     LOGGER.debug(f'Found class_name: {class_name_result["class_name"]}')
+                    break
                 except pp.ParseException:
                     continue
-            if obj == GDParsingKeyword.EXTENDS.value:
+            # if obj == GDParsingKeyword.EXTENDS.value:
+            #     read_ahead_string = self.create_read_ahead_string(obj, following)
+            #     try:
+            #         extends_result = extends_expr.parseString(read_ahead_string)
+            #         result.scanned_import_dependencies.append(extends_result["extends_name"])
+            #         LOGGER.debug(f'Found extends: {extends_result["extends_name"]}')
+            #     except pp.ParseException:
+            #         continue
+            if obj in [GDParsingKeyword.ENUM.value, GDParsingKeyword.FUNC.value, GDParsingKeyword.VAR.value, GDParsingKeyword.CONST.value, GDParsingKeyword.CLASS.value]:
+                break
+
+    def _add_loads_to_result(self, result: FileResult):
+        preload_or_load = pp.Or([pp.Keyword(GDParsingKeyword.LOAD.value), pp.Keyword(GDParsingKeyword.PRELOAD.value)]) + \
+            pp.Suppress('(') + pp.Literal('"') + pp.NotAny("user : //") + pp.Optional(pp.Literal("res : //")).setResultsName("res") + pp.Word(pp.alphanums + "-" + '_' + "/" + ".").setResultsName("load_path") + pp.Literal('"') + pp.Suppress(')')
+        # Scan lines for loads and preloads
+        list_of_words = result.scanned_tokens
+        for _, obj, following in self._gen_word_read_ahead(list_of_words):
+            if obj in [GDParsingKeyword.LOAD.value, GDParsingKeyword.PRELOAD.value]:
                 read_ahead_string = self.create_read_ahead_string(obj, following)
                 try:
-                    extends_result = extends_expr.parseString(read_ahead_string)
-                    result.scanned_import_dependencies.append(extends_result["extends_name"])
-                    LOGGER.debug(f'Found extends: {extends_result["extends_name"]}')
-                except pp.ParseException:
+                    load_result = preload_or_load.parseString(read_ahead_string)
+                    if "res" not in load_result:
+                        relative_load_path = result.relative_analysis_path / Path(load_result["load_path"])
+                    else:
+                        abs_load_path = Path(result.analysis.source_directory) / Path(load_result["load_path"])
+                        relative_load_path = abs_load_path.relative_to(Path(result.analysis.source_directory).parent)
+                    LOGGER.debug(f'Found (pre)load: {load_result["load_path"]}')
+                    result.scanned_import_dependencies.append(str(relative_load_path))
+                except pp.ParseException as e:
                     continue
-            if obj in [GDParsingKeyword.ENUM.value, GDParsingKeyword.FUNC.value, GDParsingKeyword.VAR.value]:
-                break
 
     def generate_entity_results_from_analysis(self, analysis):
         LOGGER.debug('generating entity results...')
