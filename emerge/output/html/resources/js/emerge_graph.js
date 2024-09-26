@@ -96,7 +96,7 @@ function drawNodes(context) {
             
             context.arc(d.x, d.y, d.radius + 2.0, 0, TWO_TIMES_PI);
             context.fillStyle = '#FF0000' //activeSelectionColor
-            drawNodeLabel(d.id, d.x + 14, d.y - 7)
+            drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
             context.fill();
         }
         
@@ -109,7 +109,7 @@ function drawNodes(context) {
             
             if (nodeLabelsEnabled) {
                 context.fillStyle = currentPassiveNodeLabelColor;
-                drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                 context.fillStyle = nodeColorByModularity(d, unselectedNodesOpacity)
             }
             
@@ -124,7 +124,7 @@ function drawNodes(context) {
                     
                     if (nodeLabelsEnabled) {
                         context.fillStyle = currentActiveNodeLabelColor;
-                        drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                        drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                         context.fillStyle = nodeColorByModularity(d)
                     }
                     
@@ -138,7 +138,7 @@ function drawNodes(context) {
                         context.stroke();
                         
                         context.fillStyle = currentActiveNodeLabelColor;
-                        drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                        drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                         context.fillStyle = nodeColorByModularity(d)
                         
                         searchResults += 1
@@ -151,7 +151,7 @@ function drawNodes(context) {
                         if ( searchTermIncludedInNodeTags(d) )
                         {
                             context.fillStyle = currentActiveNodeLabelColor;
-                            drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                            drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                             
                             drawNodeHighlight(d, nodeColorByModularity(d, 1.0))
                             context.strokeStyle = nodeStrokeStyle;
@@ -170,7 +170,7 @@ function drawNodes(context) {
                             context.stroke();
                             
                             context.fillStyle = currentActiveNodeLabelColor;
-                            drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                            drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                             context.fillStyle = nodeColorByModularity(d)
                             
                             searchResults += 1
@@ -183,7 +183,7 @@ function drawNodes(context) {
                         
                         if (nodeLabelsEnabled) {
                             context.fillStyle = currentPassiveNodeLabelColor;
-                            drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                            drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                             context.fillStyle = nodeColorByModularity(d, 0.2)
                         }
                     }
@@ -193,7 +193,7 @@ function drawNodes(context) {
                 if (addContributorSearch == true && searchTermIncludedInNodeContributors(d)) {
                     
                     context.fillStyle = currentActiveNodeLabelColor;
-                    drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                    drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                     
                     drawNodeHighlight(d, nodeColorByModularity(d, 1.0))
                     context.strokeStyle = nodeStrokeStyle;
@@ -214,13 +214,13 @@ function drawNodes(context) {
                     
                     // show/highlight node label of every connected node from the hovered node
                     context.fillStyle = currentActiveNodeLabelColor;
-                    drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                    drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                     context.fillStyle = nodeColorByModularity(d)
                     
                 } else if ( hoverCoupling == true && nodeNamesHaveChangeCoupling(d.id, closeNode.id) ) {
 
                     context.fillStyle = currentActiveNodeLabelColor;
-                    drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                    drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                     
                     drawNodeHighlight(d, nodeColorByModularity(d, 1.0))
                     context.strokeStyle = nodeStrokeStyle;
@@ -244,7 +244,7 @@ function drawNodes(context) {
                     
                     if (nodeLabelsEnabled) {
                         context.fillStyle = currentPassiveNodeLabelColor;
-                        drawNodeLabel(d.id, d.x + 14, d.y - 7)
+                        drawNodeLabel(d.display_name || d.id, d.x + 14, d.y - 7)
                         context.fillStyle = nodeColorByModularity(d, 0.2)
                     }
                 }

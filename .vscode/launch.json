@@ -137,6 +137,17 @@
             ]
         },
         {
+            "name": "GD / emerge",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/emerge.py",
+            "console": "integratedTerminal",
+            "args": [
+                "-c",
+                "emerge/myconfigs/gd-template.yaml"
+            ]
+        },
+        {
             "name": "--",
             "type": "python",
             "request": "launch"

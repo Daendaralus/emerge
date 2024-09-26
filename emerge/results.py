@@ -332,10 +332,10 @@ class FileResult(AbstractFileResult, ParsingMixin):
         active_block_comment = False
 
         for line in source_lines:
-            if start_comment_string in line:
+            if start_comment_string and start_comment_string in line:
                 active_block_comment = True
                 continue
-            if stop_comment_string in line:
+            if stop_comment_string and stop_comment_string in line:
                 active_block_comment = False
                 continue
             if line.strip().startswith(line_comment_string):
@@ -399,19 +399,23 @@ class FileResult(AbstractFileResult, ParsingMixin):
                 self.analysis.statistics.increment(Statistics.Key.PARSING_HITS)
 
                 scope_level = 0
-                found_entities[parsing_result.entity_name] = []
-                all_tokens = [obj] + following
-                for token in all_tokens:
-                    if token == open_scope_character:
-                        scope_level += 1
-
-                    if token == close_scope_character:
-                        scope_level -= 1
-                        if scope_level == 0:
+                if parsing_result.entity_name not in found_entities:
+                    found_entities[parsing_result.entity_name] = []
+                    all_tokens = [obj] + following
+                    for token in all_tokens:
+                        if token == entity_keywords[0]:
                             break
+                        # Needs to be replaced somehow by indentation checking
+                        # if token == open_scope_character:
+                        #     scope_level += 1
 
-                    if parsing_result.entity_name in found_entities:
-                        found_entities[parsing_result.entity_name].append(token)
+                        # if token == close_scope_character:
+                        #     scope_level -= 1
+                        #     if scope_level == 0:
+                        #         break
+
+                        if parsing_result.entity_name in found_entities:
+                            found_entities[parsing_result.entity_name].append(token)
 
         for entity_name, tokens in found_entities.items():
 
