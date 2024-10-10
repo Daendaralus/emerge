@@ -24,6 +24,7 @@ from emerge.languages.rubyparser import RubyParser
 from emerge.languages.pyparser import PythonParser
 from emerge.languages.goparser import GoParser
 from emerge.languages.gdparser import GDParser
+from emerge.languages.godot_tscnparser import GodotTSCNParser
 
 from emerge.config import Configuration
 from emerge.analyzer import Analyzer
@@ -58,7 +59,8 @@ class Emerge:
             RubyParser.parser_name(): RubyParser(),
             PythonParser.parser_name(): PythonParser(),
             GoParser.parser_name(): GoParser(),
-            GDParser.parser_name(): GDParser()
+            GDParser.parser_name(): GDParser(),
+            GodotTSCNParser.parser_name(): GodotTSCNParser()
         }
 
         self.config.supported_languages = [x.language_type() for x in self._parsers.values()]

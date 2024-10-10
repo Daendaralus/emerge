@@ -36,6 +36,7 @@ class LanguageType(Enum):
     PY = auto()
     GO = auto()
     GD = auto()
+    GODOT_TSCN = auto()
 
 
 @unique
@@ -53,6 +54,7 @@ class Parser(Enum):
     PYTHON_PARSER = auto()
     GO_PARSER = auto()
     GD_PARSER = auto()
+    GODOT_TSCN_PARSER = auto()
 
 
 @unique

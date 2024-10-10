@@ -28,6 +28,7 @@ from emerge.languages.objcparser import ObjCParser
 from emerge.languages.rubyparser import RubyParser
 from emerge.languages.pyparser import PythonParser
 from emerge.languages.gdparser import GDParser
+from emerge.languages.godot_tscnparser import GodotTSCNParser
 
 from emerge.log import Logger
 
@@ -59,6 +60,7 @@ class LanguageExtension(Enum):
     PYTHON = '.py'
     GO = '.go'
     GD = '.gd'
+    GODOT_TSCN = '.tscn'
 
     @staticmethod
     def valid_key(key) -> bool:
@@ -113,6 +115,8 @@ class FileScanMapper:
             return GoParser.parser_name()
         if file_extension == LanguageExtension.GD.value:
             return GDParser.parser_name()
+        if file_extension == LanguageExtension.GODOT_TSCN.value:
+            return GodotTSCNParser.parser_name()
         if file_extension == LanguageExtension.C_HEADER.value:
             if only_permit_languages:
                 if 'objc' in only_permit_languages:
