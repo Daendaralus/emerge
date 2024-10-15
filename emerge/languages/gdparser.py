@@ -5,23 +5,18 @@ Contains the implementation of the Python language parser and a relevant keyword
 # Authors: Grzegorz Lato <grzegorz.lato@gmail.com>
 # License: MIT
 
-from typing import Dict, Set, List
+from typing import Dict, List
 from enum import Enum, unique
 
 import logging
 from pathlib import Path
-import os
-import sys
-
-import pkg_resources
-from pip._internal.operations.freeze import freeze
 
 import coloredlogs
 import pyparsing as pp
 
 from emerge.languages.abstractparser import AbstractParser, ParsingMixin, Parser, CoreParsingKeyword, LanguageType
 from emerge.results import EntityResult, FileResult
-from emerge.abstractresult import AbstractResult, AbstractFileResult, AbstractEntityResult
+from emerge.abstractresult import AbstractResult, AbstractEntityResult
 from emerge.log import Logger
 from emerge.stats import Statistics
 
@@ -107,37 +102,15 @@ class GDParser(AbstractParser, ParsingMixin):
             preprocessed_source=""
         )
         self._add_class_name_to_result(file_result)
-        self._add_loads_to_result(file_result)
+        # self._add_loads_to_result(file_result)
         self._results[file_result.unique_name] = file_result
-
-    def after_generated_file_results(self, analysis) -> None:
-        # curate dependencies from the first scan java module format that actually exists, to match the real dependencies
-        # filtered_results = {k: v for (k, v) in self.results.items() if v.analysis is analysis and isinstance(v, FileResult)}
-
-        # result: FileResult
-        # for _, result in filtered_results.items():
-        #     curated_dependencies = []
-
-        #     for dependency in result.scanned_import_dependencies:
-        #         curated = False
-        #         needle = str(Path("/"+dependency.replace(".", "/") + ".gd"))
-
-        #         for haystack, v in filtered_results.items():
-        #             if needle in haystack:
-        #                 curated = True
-        #                 curated_dependencies.append(haystack)
-        #                 break
-        #         if not curated:
-        #             curated_dependencies.append(dependency)
-
-        #     result.scanned_import_dependencies = curated_dependencies
-        pass
 
     def _add_class_name_to_result(self, result: FileResult):
         # Define parsing rules
         class_name_expr = pp.Keyword(GDParsingKeyword.PACKAGE.value) + pp.Word(pp.alphanums).setResultsName("class_name")
-        # extends_expr = pp.Keyword(GDParsingKeyword.EXTENDS.value) + pp.Word(pp.alphanums).setResultsName("extends_name")
-
+        extends_expr = pp.Keyword(GDParsingKeyword.EXTENDS.value) + pp.Word(pp.alphanums).setResultsName("extends_name")
+        class_name = ""
+        extends = ""
         # Scan lines for class_name and extends
         list_of_words = result.scanned_tokens
         for _, obj, following in self._gen_word_read_ahead(list_of_words):
@@ -146,26 +119,51 @@ class GDParser(AbstractParser, ParsingMixin):
                 try:
                     class_name_result = class_name_expr.parseString(read_ahead_string)
                     result.module_name = class_name_result["class_name"]
+                    class_name = class_name_result["class_name"]
                     LOGGER.debug(f'Found class_name: {class_name_result["class_name"]}')
-                    break
+                    if extends:
+                        break
+                    continue
                 except pp.ParseException:
                     continue
-            # if obj == GDParsingKeyword.EXTENDS.value:
-            #     read_ahead_string = self.create_read_ahead_string(obj, following)
-            #     try:
-            #         extends_result = extends_expr.parseString(read_ahead_string)
-            #         result.scanned_import_dependencies.append(extends_result["extends_name"])
-            #         LOGGER.debug(f'Found extends: {extends_result["extends_name"]}')
-            #     except pp.ParseException:
-            #         continue
+            if obj == GDParsingKeyword.EXTENDS.value:
+                read_ahead_string = self.create_read_ahead_string(obj, following)
+                try:
+                    extends_result = extends_expr.parseString(read_ahead_string)
+                    result.scanned_import_dependencies.append(extends_result["extends_name"])
+                    extends = extends_result["extends_name"]
+                    LOGGER.debug(f'Found extends: {extends_result["extends_name"]}')
+                    if class_name:
+                        break
+                except pp.ParseException:
+                    continue
             if obj in [GDParsingKeyword.ENUM.value, GDParsingKeyword.FUNC.value, GDParsingKeyword.VAR.value, GDParsingKeyword.CONST.value, GDParsingKeyword.CLASS.value]:
                 break
+        if class_name and extends:
+            entity_result = EntityResult(
+                analysis=result.analysis,
+                scanned_file_name=result.scanned_file_name,
+                absolute_name=class_name,
+                display_name=class_name,
+                scanned_by=result.scanned_by,
+                scanned_language=result.scanned_language,
+                scanned_tokens=result.scanned_tokens,
+                scanned_import_dependencies=[],
+                entity_name=class_name,
+                module_name=result.module_name,
+                unique_name=class_name,
+                parent_file_result=result
+            )
+            entity_result.scanned_inheritance_dependencies.append(extends)
+            loads = self._parse_loads(result)
+            entity_result.scanned_import_dependencies.extend(loads)
+            self._results[f"{entity_result.unique_name}"] = entity_result
 
-    def _add_loads_to_result(self, result: FileResult):
+    def _parse_loads(self, result: FileResult):
         preload_or_load = pp.Or([pp.Keyword(GDParsingKeyword.LOAD.value), pp.Keyword(GDParsingKeyword.PRELOAD.value)]) + \
             pp.Suppress('(') + pp.Literal('"') + pp.NotAny("user : //") + pp.Optional(pp.Literal("res : //")).setResultsName("res") + pp.Word(pp.alphanums + "-" + '_' + "/" + ".").setResultsName("load_path") + pp.Literal('"') + pp.Suppress(')')
-        # Scan lines for loads and preloads
         list_of_words = result.scanned_tokens
+        dependencies = []
         for _, obj, following in self._gen_word_read_ahead(list_of_words):
             if obj in [GDParsingKeyword.LOAD.value, GDParsingKeyword.PRELOAD.value]:
                 read_ahead_string = self.create_read_ahead_string(obj, following)
@@ -176,9 +174,61 @@ class GDParser(AbstractParser, ParsingMixin):
                     else:
                         abs_load_path = Path(result.analysis.source_directory) / Path(load_result["load_path"])
                         relative_load_path = abs_load_path.relative_to(Path(result.analysis.source_directory).parent)
+                    dependencies.append(str(relative_load_path))
                     LOGGER.debug(f'Found (pre)load: {load_result["load_path"]}')
-                    result.scanned_import_dependencies.append(str(relative_load_path))
                 except pp.ParseException as e:
+                    continue
+        return dependencies
+
+    def _add_loads_to_result(self, result: FileResult):
+        # Scan lines for loads and preloads
+        dependencies = self._parse_loads(result)
+        for dep in dependencies:
+            result.scanned_import_dependencies.append(dep)
+
+    def _detect_type_usages(self, entity_result: EntityResult, entity_names: Dict[str, EntityResult]):
+        # Define a pyparsing expression to match a potential type usage (identifier matching entity names)
+        type_identifier = pp.Word(pp.alphas + "_", pp.alphanums + "_")
+        enum_value = pp.Word(".", pp.alphanums.upper() + "_") + pp.StringEnd()
+        # Define a rule that captures a dot-separated chain, but stop at method calls
+        type_chain = (type_identifier + pp.ZeroOrMore(~enum_value + pp.Word(".") + type_identifier))("type")
+        tokens = iter(entity_result.scanned_tokens)
+        for token in tokens:
+            if token in [":", "->"]:
+                next_token = next(tokens, None)
+                if next_token and next_token != "\n":
+                    try:
+                        result = type_chain.parseString(next_token)
+                        type_name = "".join(result["type"])
+
+                        # Check if the type_name is an entity in the current context
+                        if type_name in entity_names and type_name != entity_result.entity_name:
+                            # Add the type as a dependency if it's not already added
+                            if type_name not in entity_result.scanned_import_dependencies:
+                                entity_result.scanned_import_dependencies.append(type_name)
+                                LOGGER.debug(f"Detected type usage: {type_name} in entity: {entity_result.entity_name}")
+
+                    except pp.ParseException:
+                        # Ignore if the token does not match an identifier
+                        continue
+            if token in ["="]:
+                try:
+                    next_token = next(tokens, None)
+                    result = type_chain.parseString(next_token)
+                    next_token = next(tokens, None)
+                    if next_token == "(":
+                        type_name = "".join(result["type"][:-2])
+                    else:
+                        type_name = "".join(result["type"])
+                    # Check if the type_name is an entity in the current context
+                    if type_name in entity_names and type_name != entity_result.entity_name:
+                        # Add the type as a dependency if it's not already added
+                        if type_name not in entity_result.scanned_import_dependencies:
+                            entity_result.scanned_import_dependencies.append(type_name)
+                            LOGGER.debug(f"Detected type usage: {type_name} in entity: {entity_result.entity_name}")
+
+                except pp.ParseException:
+                    # Ignore if the token does not match an identifier
                     continue
 
     def generate_entity_results_from_analysis(self, analysis):
@@ -188,7 +238,7 @@ class GDParser(AbstractParser, ParsingMixin):
         result: FileResult
         for _, result in filtered_results.items():
 
-            entity_keywords: List[str] = [GDParsingKeyword.CLASS.value, GDParsingKeyword.PACKAGE.value, GDParsingKeyword.EXTENDS.value]
+            entity_keywords: List[str] = [GDParsingKeyword.CLASS.value]
             entity_name = pp.Word(pp.alphanums)
             
             entity_expression = pp.Or([pp.Keyword(kw) for kw in entity_keywords]) + \
@@ -202,13 +252,25 @@ class GDParser(AbstractParser, ParsingMixin):
                 CoreParsingKeyword.START_BLOCK_COMMENT.value: "",
                 CoreParsingKeyword.STOP_BLOCK_COMMENT.value: ""
             }
-            entity_results = result.generate_entity_results_from_scopes(entity_keywords, match_expression, comment_keywords)
+            entity_results = result.generate_entity_results_from_scopes(entity_keywords, match_expression, comment_keywords, indent_based=True)
 
             entity_results: List[EntityResult]
             for entity_result in entity_results:
                 self._add_inheritance_to_entity_result(entity_result)
                 self.create_unique_entity_name(entity_result)
+            entity_names = {entity.entity_name: entity for entity in entity_results}
+            for entity_result in entity_results:
+                for i, dependency in enumerate(entity_result.scanned_inheritance_dependencies):
+                    if dependency in entity_names:
+                        entity_result.scanned_inheritance_dependencies[i] = entity_names[dependency].unique_name
                 self._results[entity_result.unique_name] = entity_result
+        entity_names = {k:v for k, v in self._results.items() if isinstance(v, EntityResult)}
+
+        for entity_result in self._results.values():
+            if not isinstance(entity_result, EntityResult):
+                continue
+            # Detect and add type usage dependencies
+            self._detect_type_usages(entity_result, entity_names)
 
     def create_unique_entity_name(self, entity: AbstractEntityResult) -> None:
         if entity.module_name:
@@ -248,8 +310,8 @@ class GDParser(AbstractParser, ParsingMixin):
                             'for entity name: {getattr(parsing_result, CoreParsingKeyword.ENTITY_NAME.value)} and added to result')
                         result.scanned_inheritance_dependencies.append(getattr(parsing_result, CoreParsingKeyword.INHERITED_ENTITY_NAME.value))
 
-
-
+    def after_generated_file_results(self, analysis) -> None:
+        pass
 
 
 if __name__ == "__main__":
