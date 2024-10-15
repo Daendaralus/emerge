@@ -46,6 +46,8 @@ class SLOCCommentType(Enum):
     CPP = {CommentKeyword.LINE_COMMENT.name: "//", CommentKeyword.START_BLOCK_COMMENT.name: "/*", CommentKeyword.STOP_BLOCK_COMMENT.name: "*/"}
     PY = {CommentKeyword.LINE_COMMENT.name: "#", CommentKeyword.START_BLOCK_COMMENT.name: '"""', CommentKeyword.STOP_BLOCK_COMMENT.name: '"""'}
     GO = {CommentKeyword.LINE_COMMENT.name: "//", CommentKeyword.START_BLOCK_COMMENT.name: "/*", CommentKeyword.STOP_BLOCK_COMMENT.name: "*/"}
+    GD = {CommentKeyword.LINE_COMMENT.name: "#", CommentKeyword.START_BLOCK_COMMENT.name: "", CommentKeyword.STOP_BLOCK_COMMENT.name: ""}
+    GODOT_TSCN = {CommentKeyword.LINE_COMMENT.name: "", CommentKeyword.START_BLOCK_COMMENT.name: "", CommentKeyword.STOP_BLOCK_COMMENT.name: ""}
 
 
 class SourceLinesOfCodeMetric(CodeMetric):
@@ -117,17 +119,18 @@ class SourceLinesOfCodeMetric(CodeMetric):
         active_block_comment = False
 
         for line in source_lines:
-            # starting a block comment
-            if start_block_comment in line and stop_block_comment not in line:
-                active_block_comment = True
-                continue
-            # stopping a block comment
-            if start_block_comment not in line and stop_block_comment in line:
-                active_block_comment = False
-                continue
-            # one line block comment
-            if start_block_comment in line and stop_block_comment in line:
-                continue
+            if start_block_comment and stop_block_comment:
+                # starting a block comment
+                if start_block_comment in line and stop_block_comment not in line:
+                    active_block_comment = True
+                    continue
+                # stopping a block comment
+                if start_block_comment not in line and stop_block_comment in line:
+                    active_block_comment = False
+                    continue
+                # one line block comment
+                if start_block_comment in line and stop_block_comment in line:
+                    continue
             # regular line comment
             if line.strip().startswith(line_comment):
                 continue
@@ -162,3 +165,7 @@ class SourceLinesOfCodeMetric(CodeMetric):
             return SLOCCommentType.PY.value
         if result.scanned_language == LanguageType.GO:
             return SLOCCommentType.GO.value
+        if result.scanned_language == LanguageType.GD:
+            return SLOCCommentType.GD.value
+        if result.scanned_language == LanguageType.GODOT_TSCN:
+            return SLOCCommentType.GODOT_TSCN.value

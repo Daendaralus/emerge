@@ -75,7 +75,7 @@ class GraphRepresentation:
             self._digraph.add_node(node_name, absolute_name=absolute_name, display_name=display_name)
             dependencies = result.scanned_import_dependencies
             for dependency in dependencies:
-                self._digraph.add_node(dependency, display_name=dependency)
+                self._digraph.add_node(dependency) #, display_name=dependency)
                 self._digraph.add_edge(node_name, dependency)
 
     def calculate_inheritance_graph_from_results(self, results: Dict[str, Any]) -> None:

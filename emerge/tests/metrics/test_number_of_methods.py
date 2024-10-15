@@ -35,6 +35,7 @@ from emerge.languages.rubyparser import RubyParser
 from emerge.languages.swiftparser import SwiftParser
 from emerge.languages.pyparser import PythonParser
 from emerge.languages.goparser import GoParser
+from emerge.languages.gdparser import GDParser
 from emerge.languages.abstractparser import AbstractParser
 
 from emerge.analysis import Analysis

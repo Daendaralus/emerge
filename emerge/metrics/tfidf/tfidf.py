@@ -45,7 +45,9 @@ class TFIDFMetric(CodeMetric):
             "C":          {'return', 'int', 'static', 'void', 'case', 'break', 'const', 'struct', 'printf', 'fprintf', 'unsigned', 'extern', 'char', 'float', 'sizeof', 'unsinged', 'undef', 'define'},
             "CPP":        {'return', 'int', 'static', 'void', 'case', 'break', 'const', 'struct', 'printf', 'fprintf', 'unsigned', 'extern', 'char', 'float', 'sizeof', 'string', 'bool', 'virtual', 'override', 'nullptr', 'final', 'inline', 'template'},
             "PY":         {'return', 'self', 'import', 'enum', 'true', 'false', 'none', 'class', 'cls', 'super', 'not'},
-            "GO":         {'return', 'nil', 'defer', 'func', 'default'}
+            "GO":         {'return', 'nil', 'defer', 'func', 'default'},
+            "GD":         {'return', 'self', 'class', 'class_name', 'func', 'signal', 'super', 'not', 'extends', 'var', 'null', 'void', 'const', 'static', 'enum'},
+            "GODOT_TSCN": {'ext_resource', 'type', 'Script', 'Shader', 'Texture2D', 'PackedScene', 'sub_resource', 'ShaderMaterial', 'gd_scene', 'node', 'name', 'parent'}
         }
 
         """The following natural language stopwords should be excluded from the TF-IDF calculation."""

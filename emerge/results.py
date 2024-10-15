@@ -332,10 +332,10 @@ class FileResult(AbstractFileResult, ParsingMixin):
         active_block_comment = False
 
         for line in source_lines:
-            if start_comment_string in line:
+            if start_comment_string and start_comment_string in line:
                 active_block_comment = True
                 continue
-            if stop_comment_string in line:
+            if stop_comment_string and stop_comment_string in line:
                 active_block_comment = False
                 continue
             if line.strip().startswith(line_comment_string):
@@ -361,7 +361,16 @@ class FileResult(AbstractFileResult, ParsingMixin):
 
         return "\n".join(filtered_source_lines)
 
-    def generate_entity_results_from_scopes(self, entity_keywords, entity_expression, comment_keywords) -> List[EntityResult]:
+    def _calculate_indent_level(self, tokens: List[str], indent_character: str) -> int:
+        indent_level = 0
+        for token in tokens:
+            if token == indent_character:
+                indent_level += 1
+            else:
+                break
+        return indent_level
+
+    def generate_entity_results_from_scopes(self, entity_keywords, entity_expression, comment_keywords, indent_based=False) -> List[EntityResult]:
         """Generate entity results by extracting everything within a scope that begins with an entity keyword."""
         open_scope_character: str = CoreParsingKeyword.OPENING_CURVED_BRACKET.value
         close_scope_character: str = CoreParsingKeyword.CLOSING_CURVED_BRACKET.value
@@ -382,8 +391,10 @@ class FileResult(AbstractFileResult, ParsingMixin):
         source_string_no_comments = source_string_no_comments.replace("{ }", "")
 
         filtered_list_no_comments = self.preprocess_file_content_and_generate_token_list(source_string_no_comments)
-
+        entity_indent_level = 0
         for _, obj, following in self._gen_word_read_ahead(filtered_list_no_comments):
+            if indent_based and obj == CoreParsingKeyword.NEWLINE.value:
+                entity_indent_level = self._calculate_indent_level(following, CoreParsingKeyword.TAB.value)
             if obj in entity_keywords:
                 read_ahead_string = self.create_read_ahead_string(obj, following)
 
@@ -401,15 +412,26 @@ class FileResult(AbstractFileResult, ParsingMixin):
                 scope_level = 0
                 found_entities[parsing_result.entity_name] = []
                 all_tokens = [obj] + following
-                for token in all_tokens:
-                    if token == open_scope_character:
-                        scope_level += 1
 
-                    if token == close_scope_character:
-                        scope_level -= 1
-                        if scope_level == 0:
-                            break
+                for i, token in enumerate(all_tokens):
+                    if indent_based:
+                        # Handle indentation-based scoping
+                        if token == CoreParsingKeyword.NEWLINE.value:
+                            # Calculate indentation level by counting consecutive tabs
+                            current_indent_level = self._calculate_indent_level(all_tokens[i + 1:], CoreParsingKeyword.TAB.value)
 
+                            if current_indent_level <= entity_indent_level:
+                                break
+
+                    else:
+                        if token == open_scope_character:
+                            scope_level += 1
+
+                        if token == close_scope_character:
+                            scope_level -= 1
+                            if scope_level == 0:
+                                break
+                            
                     if parsing_result.entity_name in found_entities:
                         found_entities[parsing_result.entity_name].append(token)
 
