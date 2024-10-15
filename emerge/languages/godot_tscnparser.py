@@ -93,9 +93,7 @@ class GodotTSCNParser(AbstractParser, ParsingMixin):
         scanned_tokens = self.preprocess_file_content_and_generate_token_list_by_mapping(file_content, self._token_mappings)
 
         # make sure to create unique names by using the relative analysis path as a base for the result
-        # parent_analysis_source_path = f"{Path(analysis.source_directory).parent}/"
-        # full_file_path = Path(parent_analysis_source_path) / Path(full_file_path)
-        relative_file_path_to_analysis = full_file_path #str(Path(full_file_path).relative_to(parent_analysis_source_path))
+        relative_file_path_to_analysis = full_file_path 
 
         file_result = FileResult.create_file_result(
             analysis=analysis,
@@ -177,35 +175,7 @@ class GodotTSCNParser(AbstractParser, ParsingMixin):
         return objects
 
     def after_generated_file_results(self, analysis) -> None:
-        # curate dependencies from the first scan java module format that actually exists, to match the real dependencies
-        # filtered_results = {k: v for (k, v) in self.results.items() if v.analysis is analysis and isinstance(v, FileResult)}
-
-        # result: FileResult
-        # for _, result in filtered_results.items():
-        #     curated_dependencies = []
-
-        #     for dependency in result.scanned_import_dependencies:
-        #         curated = False
-        #         needle = str(Path("/"+dependency.replace(".", "/") + ".gd"))
-
-        #         for haystack, v in filtered_results.items():
-        #             if needle in haystack:
-        #                 curated = True
-        #                 curated_dependencies.append(haystack)
-        #                 break
-        #         if not curated:
-        #             curated_dependencies.append(dependency)
-
-        #     result.scanned_import_dependencies = curated_dependencies
         pass
-
-    # def _add_scene_name(self, result: FileResult, objects: List[TSCNObject]):
-    #     for obj in objects:
-    #         if obj.type == TSCNParsingKeyword.EXT_RESOURCE and obj.resource_type == TSCNParsingKeyword.SCRIPT_TYPE.value:
-    #                 path = Path(obj.path)
-    #                 if path.suffix== ".gd" and path.stem == Path(result.relative_file_path_to_analysis).stem:
-    #                     result.module_name = 
-
 
     def _add_dependencies_to_result(self, result: FileResult, objects: List[TSCNObject]):
         for obj in objects:

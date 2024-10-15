@@ -148,17 +148,6 @@
             ]
         },
         {
-            "name": "self test / emerge",
-            "type": "python",
-            "request": "launch",
-            "program": "${workspaceFolder}/emerge.py",
-            "console": "integratedTerminal",
-            "args": [
-                "-c",
-                "emerge/myconfigs/emerge.yaml"
-            ]
-        },
-        {
             "name": "--",
             "type": "python",
             "request": "launch"

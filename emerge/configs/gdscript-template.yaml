@@ -4,10 +4,9 @@ loglevel: info
 analyses:
 - analysis_name: gd check
   source_directory: /Users/user1/emerge/project/source
-  only_permit_languages:
-  - gd
   only_permit_file_extensions:
   - .gd
+  - .tscn
   ignore_directories_containing:
   - __pycache__
   - .godot
@@ -19,8 +18,17 @@ analyses:
   - number_of_methods
   - source_lines_of_code
   - dependency_graph
-  - louvain_modularity
   - fan_in_out
+  - louvain_modularity
+  - tfidf
+  entity_scan:
+  - dependency_graph
+  - inheritance_graph
+  - complete_graph
+  - source_lines_of_code
+  - number_of_methods
+  - fan_in_out
+  - louvain_modularity
   - tfidf
   export:
   - directory: /Users/user1/emerge/project/export

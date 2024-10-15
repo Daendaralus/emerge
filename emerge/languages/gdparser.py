@@ -84,9 +84,7 @@ class GDParser(AbstractParser, ParsingMixin):
         scanned_tokens = self.preprocess_file_content_and_generate_token_list_by_mapping(file_content, self._token_mappings)
 
         # make sure to create unique names by using the relative analysis path as a base for the result
-        # parent_analysis_source_path = f"{Path(analysis.source_directory).parent}/"
-        # full_file_path = Path(parent_analysis_source_path) / Path(full_file_path)
-        relative_file_path_to_analysis = full_file_path #str(Path(full_file_path).relative_to(parent_analysis_source_path))
+        relative_file_path_to_analysis = full_file_path
 
         file_result = FileResult.create_file_result(
             analysis=analysis,
