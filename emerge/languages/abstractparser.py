@@ -86,6 +86,7 @@ class CoreParsingKeyword(Enum):
     POSIX_CURRENT_DIRECTORY = "./"
     POSIX_PARENT_DIRECTORY = "../"
     NEWLINE = "\n"
+    TAB = "\t"
 
 
 class ParsingMixin(ABC):
@@ -233,7 +234,7 @@ class ParsingMixin(ABC):
 
     @classmethod
     def preprocess_file_content_and_generate_token_list(cls, file_content: str) -> List[str]:
-        return re.findall(r'\S+|\n', file_content.replace(':', ' : ')
+        return re.findall(r'\S+|\n|\t', file_content.replace(':', ' : ')
                                                  .replace(';', ' ; ')
                                                  .replace('{', ' { ')
                                                  .replace('}', ' } ')
@@ -252,7 +253,7 @@ class ParsingMixin(ABC):
     def preprocess_file_content_and_generate_token_list_by_mapping(cls, file_content: str, mapping_dict: Dict[str, str]) -> List[str]:
         for origin, mapped in mapping_dict.items():
             file_content = file_content.replace(origin, mapped)
-        return re.findall(r'\S+|\n', file_content)
+        return re.findall(r'\S+|\n|\t', file_content)
 
 
 class AbstractParser(ParsingMixin, ABC):
